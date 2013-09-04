@@ -82,6 +82,10 @@
                 minMaxValues[0] = series[i].data[0][AxeIdx];
                 minMaxValues[1] = series[i].data[series[i].data.length - 1][AxeIdx];
             }
+            if(typeof minMaxValues[0] == 'string'){
+                minMaxValues[0] = 0;
+                minMaxValues[1] = series[0].data.length - 1;
+            }
             return minMaxValues;
         }
 
