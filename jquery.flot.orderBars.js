@@ -187,7 +187,7 @@
     	}
         
         function  calculBorderAndBarWidth(serie){
-            borderWidth = serie.bars.lineWidth ? serie.bars.lineWidth  : 2;
+            borderWidth = typeof serie.bars.lineWidth === "number" ? serie.bars.lineWidth  : 2;
             borderWidthInXabsWidth = borderWidth * pixelInXWidthEquivalent;
         }
         
