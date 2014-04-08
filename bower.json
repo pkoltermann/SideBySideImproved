@@ -1,0 +1,26 @@
+{
+    "name": "SideBySideImproved",
+    "version": "0.2.0",
+    "homepage": "https://github.com/pkoltermann/SideBySideImproved",
+    "description": "Improved version of Flot side by side plugin (Benjamin BUFFET http://en.benjaminbuffet.com/labs/flot/)",
+    "main": "jquery.flot.orderBars.js",
+    "keywords": [
+        "flot",
+        "bars",
+        "chart"
+    ],
+    "authors": [
+        "Przemyslaw Koltermann [github.com/pkoltermann]"
+    ],
+    "license": "MIT",
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ],
+    "dependencies": {
+        "flot": "0.8.0"
+    }
+}
