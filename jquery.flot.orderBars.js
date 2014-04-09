@@ -29,7 +29,7 @@
         var sameSeries = new Array();
         var borderWidth;
         var borderWidthInXabsWidth;
-        var pixelInXWidthEquivalent = 1;
+        var pixelInXWidthEquivalent = 1;  //X axis unit/pixel
         var isHorizontal = false;
 
         /*
@@ -38,9 +38,9 @@
         function reOrderBars(plot, serie, datapoints){
             var shiftedPoints = null;
             
-            if(serieNeedToBeReordered(serie)){                
-                checkIfGraphIsHorizontal(serie);
-                calculPixel2XWidthConvert(plot);
+            if(serieNeedToBeReordered(serie)){     
+                isHorizontal = isGraphHorizontal(serie);
+                pixelInXWidthEquivalent = calculPixel2XWidthConvert(plot);
                 retrieveBarSeries(plot);
                 calculBorderAndBarWidth(serie);
                 
@@ -58,7 +58,7 @@
 
                     shiftedPoints = shiftPoints(datapoints,serie,decallage);
                     datapoints.points = shiftedPoints;
-               } else if (nbOfBarsToOrder == 1){
+               } else if (nbOfBarsToOrder === 1){
                    // To be consistent with the barshift at other uneven numbers of bars, where
                    // the center bar is centered around the point, we also need to shift a single bar
                    // left by half its width
@@ -71,16 +71,16 @@
         }
 
         function serieNeedToBeReordered(serie){
-            return serie.bars != null
+            return serie.bars
                 && serie.bars.show
-                && serie.bars.order != null;
+                && serie.bars.order;
         }
 
         function calculPixel2XWidthConvert(plot){
             var gridDimSize = isHorizontal ? plot.getPlaceholder().innerHeight() : plot.getPlaceholder().innerWidth();
             var minMaxValues = isHorizontal ? getAxeMinMaxValues(plot.getData(),1) : getAxeMinMaxValues(plot.getData(),0);
             var AxeSize = minMaxValues[1] - minMaxValues[0];
-            pixelInXWidthEquivalent = AxeSize / gridDimSize;
+            return AxeSize / gridDimSize;
         }
 
         function getAxeMinMaxValues(series,AxeIdx){
@@ -89,7 +89,7 @@
                 minMaxValues[0] = series[i].data[0][AxeIdx];
                 minMaxValues[1] = series[i].data[series[i].data.length - 1][AxeIdx];
             }
-            if(typeof minMaxValues[0] == 'string'){
+            if(typeof minMaxValues[0] === 'string'){
                 minMaxValues[0] = 0;
                 minMaxValues[1] = series[0].data.length - 1;
             }
@@ -97,15 +97,15 @@
         }
 
         function retrieveBarSeries(plot){
-            orderedBarSeries = findOthersBarsToReOrders(plot.getData());
+            orderedBarSeries = findOtherBarsToReOrders(plot.getData());
             nbOfBarsToOrder = orderedBarSeries.length;
         }
 
-        function findOthersBarsToReOrders(series){
+        function findOtherBarsToReOrders(series){
             var retSeries = new Array();
 
             for(var i = 0; i < series.length; i++){
-                if(series[i].bars.order != null && series[i].bars.show){
+                if(series[i].bars.order && series[i].bars.show){
                     retSeries.push(series[i]);
                 }
             }
@@ -116,52 +116,56 @@
         function sortByOrder(series){
             var n = series.length;
             do {
-                for (var i=0; i < n - 1; i++) {
-                    if (series[i].bars.order > series[i + 1].bars.order) {
+                for (var i=0,j=1; i < n - 1; i++,j=i+1) {
+                    if (series[i].bars.order > series[j].bars.order) {
                         var tmp = series[i];
-                        series[i] = series[i + 1];
-                        series[i + 1] = tmp;
+                        series[i] = series[j];
+                        series[j] = tmp;
                     }
-                    else if (series[i].bars.order == series[i + 1].bars.order) {
+                    else if (series[i].bars.order === series[j].bars.order) {
                         
                         //check if any of the series has set sameSeriesArrayIndex
                         var sameSeriesIndex;
-                        if (series[i].sameSeriesArrayIndex) {
-                            if(series[i + 1].sameSeriesArrayIndex !== undefined) {
-                                sameSeriesIndex = series[i].sameSeriesArrayIndex;
-                                series[i + 1].sameSeriesArrayIndex = sameSeriesIndex;
-                                sameSeries[sameSeriesIndex].push(series[i + 1]);                                
-                                sameSeries[sameSeriesIndex].sort(sortByWidth);
-                                
-                                series[i] = sameSeries[sameSeriesIndex][0];
-                                removeElement(series, i + 1);
-                            }
+                        if (typeof series[i].sameSeriesArrayIndex === 'Number' && 
+                                typeof series[j].sameSeriesArrayIndex !== 'Number') {
+                            sameSeriesIndex = series[i].sameSeriesArrayIndex;
+                            series[j].sameSeriesArrayIndex = sameSeriesIndex;
+                            sameSeries[sameSeriesIndex].push(series[j]);                                
+                            sameSeries[sameSeriesIndex].sort(sortByWidth);
+
+                            series[i] = sameSeries[sameSeriesIndex][0];
+                            removeElement(series, j);
+                          
                         }
                         
-                        else if (series[i + 1].sameSeriesArrayIndex) {
-                            if(series[i].sameSeriesArrayIndex !== undefined) {
-                                sameSeriesIndex = series[i + 1].sameSeriesArrayIndex;
-                                series[i].sameSeriesArrayIndex = sameSeriesIndex;
-                                sameSeries[sameSeriesIndex].push(series[i]);                                
-                                sameSeries[sameSeriesIndex].sort(sortByWidth);
-                                
-                                series[i] = sameSeries[sameSeriesIndex][0];
-                                removeElement(series, i + 1);
-                                
-                            }
+                        else if (typeof series[j].sameSeriesArrayIndex === 'Number' && 
+                                typeof series[i].sameSeriesArrayIndex !== 'Number') {
+                            sameSeriesIndex = series[j].sameSeriesArrayIndex;
+                            series[i].sameSeriesArrayIndex = sameSeriesIndex;
+                            sameSeries[sameSeriesIndex].push(series[i]);                                
+                            sameSeries[sameSeriesIndex].sort(sortByWidth);
+
+                            series[i] = sameSeries[sameSeriesIndex][0];
+                            removeElement(series, j);
+                        }
+                        else if (typeof series[i].sameSeriesArrayIndex === 'Number' && 
+                                typeof series[j].sameSeriesArrayIndex === 'Number') {
+                            /**
+                             * @todo move second serie to first serie array and remove second serie array
+                             */
                         }
                         
                         else {
                             sameSeriesIndex = sameSeries.length;
-                            sameSeries[sameSeriesIndex] = new Array();
+                            sameSeries[sameSeriesIndex] = [];
                             series[i].sameSeriesArrayIndex = sameSeriesIndex;
-                            series[i + 1].sameSeriesArrayIndex = sameSeriesIndex;
+                            series[j].sameSeriesArrayIndex = sameSeriesIndex;
                             sameSeries[sameSeriesIndex].push(series[i]);      
-                            sameSeries[sameSeriesIndex].push(series[i + 1]);  
+                            sameSeries[sameSeriesIndex].push(series[j]);  
                             sameSeries[sameSeriesIndex].sort(sortByWidth);
                             
                             series[i] = sameSeries[sameSeriesIndex][0];
-                            removeElement(series, i + 1);
+                            removeElement(series, j);
                         }
                         i--;
                         n--;
@@ -186,11 +190,8 @@
             var y = serie2.bars.barWidth ? serie2.bars.barWidth : 1;
             return ((x < y) ? -1 : ((x > y) ? 1 : 0));
         }
-        function removeElement(arr, from, to) {
-            var rest = arr.slice((to || from) + 1 || arr.length);
-            arr.length = from < 0 ? arr.length + from : from;
-            arr.push.apply(arr, rest);
-            return arr;
+        function removeElement(arr, index) {
+            return arr.splice(index, 1);
         }
         
         function  calculBorderAndBarWidth(serie){
@@ -198,10 +199,11 @@
             borderWidthInXabsWidth = borderWidth * pixelInXWidthEquivalent;
         }
         
-        function checkIfGraphIsHorizontal(serie){
+        function isGraphHorizontal(serie){
             if(serie.bars.horizontal){
-                isHorizontal = true;
+                return true;
             }
+            return false;
         }
 
         function findPosition(serie){
@@ -212,7 +214,7 @@
             }
             else {
                 for (var i = 0; i < orderedBarSeries.length; ++i) {
-                    if (serie == orderedBarSeries[i]){
+                    if (serie === orderedBarSeries[i]){
                         pos = i;
                         break;
                     }
@@ -224,7 +226,7 @@
         function calculCenterBarShift(){
             var width = 0;
 
-            if(nbOfBarsToOrder%2 != 0)
+            if(nbOfBarsToOrder%2 !== 0)
                 // Since the array indexing starts at 0, we need to use Math.floor instead of
                 // Math.ceil otherwise we will get an error if there is only one bar
                 width = (orderedBarSeries[Math.floor(nbOfBarsToOrder / 2)].bars.barWidth)/2;
