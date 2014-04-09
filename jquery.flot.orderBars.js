@@ -25,8 +25,8 @@
     function init(plot){
         var orderedBarSeries;
         var nbOfBarsToOrder;
-        var seriesPos = new Array();
-        var sameSeries = new Array();
+        var seriesPos = [];
+        var sameOrderSeries = [];
         var borderWidth;
         var borderWidthInXabsWidth;
         var pixelInXWidthEquivalent = 1;  //X axis unit/pixel
@@ -37,6 +37,12 @@
          */
         function reOrderBars(plot, serie, datapoints){
             var shiftedPoints = null;
+            
+            if (plot.sameOrderSeries) {
+                sameOrderSeries = plot.sameOrderSeries;
+            } else {
+                plot.sameOrderSeries = sameOrderSeries;
+            }
             
             if(serieNeedToBeReordered(serie)){     
                 isHorizontal = isGraphHorizontal(serie);
@@ -116,7 +122,7 @@
         function sortByOrder(series){
             var n = series.length;
             do {
-                for (var i=0,j=1; i < n - 1; i++,j=i+1) {
+                for (var i=0,j=1; i < n - 1; i+=1,j=i+1) {
                     if (series[i].bars.order > series[j].bars.order) {
                         var tmp = series[i];
                         series[i] = series[j];
@@ -124,47 +130,49 @@
                     }
                     else if (series[i].bars.order === series[j].bars.order) {
                         
-                        //check if any of the series has set sameSeriesArrayIndex
-                        var sameSeriesIndex;
-                        if (typeof series[i].sameSeriesArrayIndex === 'Number' && 
-                                typeof series[j].sameSeriesArrayIndex !== 'Number') {
-                            sameSeriesIndex = series[i].sameSeriesArrayIndex;
-                            series[j].sameSeriesArrayIndex = sameSeriesIndex;
-                            sameSeries[sameSeriesIndex].push(series[j]);                                
-                            sameSeries[sameSeriesIndex].sort(sortByWidth);
-
-                            series[i] = sameSeries[sameSeriesIndex][0];
+                        //check if any of the series has set ssIndex
+                        var ssIndex;
+                        if (typeof series[i].ssIndex === 'number' && 
+                                typeof series[j].ssIndex !== 'number') {
+                            ssIndex = series[i].ssIndex;
+                            series[j].ssIndex = ssIndex;
+                            sameOrderSeries[ssIndex].push(series[j]);                                
+                            sameOrderSeries[ssIndex].sort(sortByWidth);
                             removeElement(series, j);
                           
                         }
                         
-                        else if (typeof series[j].sameSeriesArrayIndex === 'Number' && 
-                                typeof series[i].sameSeriesArrayIndex !== 'Number') {
-                            sameSeriesIndex = series[j].sameSeriesArrayIndex;
-                            series[i].sameSeriesArrayIndex = sameSeriesIndex;
-                            sameSeries[sameSeriesIndex].push(series[i]);                                
-                            sameSeries[sameSeriesIndex].sort(sortByWidth);
-
-                            series[i] = sameSeries[sameSeriesIndex][0];
+                        else if (typeof series[j].ssIndex === 'number' && 
+                                typeof series[i].ssIndex !== 'number') {
+                            ssIndex = series[j].ssIndex;
+                            series[i].ssIndex = ssIndex;
+                            sameOrderSeries[ssIndex].push(series[i]);                                
+                            sameOrderSeries[ssIndex].sort(sortByWidth);
                             removeElement(series, j);
                         }
-                        else if (typeof series[i].sameSeriesArrayIndex === 'Number' && 
-                                typeof series[j].sameSeriesArrayIndex === 'Number') {
-                            /**
-                             * @todo move second serie to first serie array and remove second serie array
-                             */
+                        else if (typeof series[i].ssIndex === 'number' && 
+                                typeof series[j].ssIndex === 'number') {
+                            var ssToMergeId = series[j].ssIndex;
+                            var ssToMerge = sameOrderSeries[ssToMergeId];
+                            ssIndex = series[i].ssIndex;
+                            for (var csid in ssToMerge) {
+                                var ssToMove = ssToMerge[csid];
+                                ssToMove.ssIndex = ssIndex;
+                                sameOrderSeries[ssIndex].push(ssToMove);
+                                sameOrderSeries[ssIndex].sort(sortByWidth);
+                            }
+                            removeElement(sameOrderSeries, ssToMergeId);
+                            removeElement(series, j);
                         }
                         
                         else {
-                            sameSeriesIndex = sameSeries.length;
-                            sameSeries[sameSeriesIndex] = [];
-                            series[i].sameSeriesArrayIndex = sameSeriesIndex;
-                            series[j].sameSeriesArrayIndex = sameSeriesIndex;
-                            sameSeries[sameSeriesIndex].push(series[i]);      
-                            sameSeries[sameSeriesIndex].push(series[j]);  
-                            sameSeries[sameSeriesIndex].sort(sortByWidth);
-                            
-                            series[i] = sameSeries[sameSeriesIndex][0];
+                            ssIndex = sameOrderSeries.length;
+                            sameOrderSeries[ssIndex] = [];
+                            series[i].ssIndex = ssIndex;
+                            series[j].ssIndex = ssIndex;
+                            sameOrderSeries[ssIndex].push(series[i]);      
+                            sameOrderSeries[ssIndex].push(series[j]);  
+                            sameOrderSeries[ssIndex].sort(sortByWidth);
                             removeElement(series, j);
                         }
                         i--;
@@ -178,8 +186,8 @@
             }
             while (n>1);
             for (var i=0; i < series.length; i++) {
-                if (series[i].sameSeriesArrayIndex) {
-                    seriesPos[series[i].sameSeriesArrayIndex] = i;
+                if (series[i].ssIndex) {
+                    seriesPos[series[i].ssIndex] = i;
                 }
             }
             return series;
@@ -207,10 +215,10 @@
         }
 
         function findPosition(serie){
-            var ss = sameSeries;
+            var ss = sameOrderSeries;
             var pos = 0;
-            if (serie.sameSeriesArrayIndex) {
-                pos = seriesPos[serie.sameSeriesArrayIndex];
+            if (serie.ssIndex) {
+                pos = seriesPos[serie.ssIndex];
             }
             else {
                 for (var i = 0; i < orderedBarSeries.length; ++i) {
