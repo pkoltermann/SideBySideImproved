@@ -2,7 +2,7 @@
 var testChart = {
     init: function (params) {
         var defaultParams = {
-            pointsCount: 10,
+            pointsCount: 20,
             streams: [],
             placeSelector: ".placeholder",
             yaxes: [ { min: 0 },
@@ -55,7 +55,7 @@ var testChart = {
                 },
                 bars: { 
                     show: true, 
-                    barWidth: 0.5,
+                    barWidth: 0.6,
                     order: 1
                 }
             }
@@ -76,7 +76,7 @@ var testChart = {
     },
     getPoints: function () {
         var points = [];
-        for (var i=0; i < this.params.pointsCount; i++) {
+        for (var i=0; i < this.params.pointsCount; i+=2) {
             points.push(i);
         }
         return points;
@@ -85,8 +85,9 @@ var testChart = {
         var result = [];
         for(var streamId in this.params.streams) {
             result[streamId] = [];
-            for (var point in this.points)
+            for (var id in this.points)
              {
+                var point = this.points[id];
                 result[streamId].push([parseInt(point, 10), parseInt(point, 10) + parseInt(streamId, 10)]);
             }
         }
@@ -122,7 +123,7 @@ var barsParams = {
         }
     ]
 };
-var stackedBarsParams = {
+var stacked2SeriesBarsParams = {
     container: "#chart2",
     streams: [
         {
@@ -137,6 +138,14 @@ var stackedBarsParams = {
             label: 's2',
             stack: 1,
             color: 'yellow',
+            bars: {
+                order: 1
+            }
+        },         
+        {
+            label: 's5',
+            stack: 1,
+            color: 'blue',
             bars: {
                 order: 1
             }
@@ -166,20 +175,65 @@ var stackedParams = {
             label: 's1',
             stack: 1,
             color: 'red',
-            bars: null
+            bars: {}
         }, 
         {
             label: 's2',
             stack: 1,
             color: 'yellow',
-            bars: null
+            bars: {}
         }
     ]
 };
-  
-    $(function() {
-        testChart.plot(barsParams);
-        testChart.plot(stackedBarsParams);
-        //testChart.plot(stackedParams);
-    });
+var stacked3SeriesBarsParams = {
+    container: "#chart4",
+    streams: [
+        {
+            label: 's1',
+            stack: 1,
+            color: 'red',
+            bars: {
+                order: 1
+            }
+        },
+        {
+            label: 's2',
+            stack: 1,
+            color: 'gray',
+            bars: {
+                order: 1
+            }
+        },
+        {
+            label: 's5',
+            stack: 3,
+            color: 'blue',
+            bars: {
+                order: 3
+            }
+        },
+        {
+            label: 's3',
+            stack: 2,
+            color: 'green',
+            bars: {
+                order: 2
+            }
+        },
+        {
+            label: 's4',
+            stack: 2,
+            color: 'brown',
+            bars: {
+                order: 2
+            }
+        }
+    ]
+};
+$(function() {
+    testChart.plot(barsParams);
+    testChart.plot(stacked2SeriesBarsParams);
+    testChart.plot(stacked3SeriesBarsParams);
+    testChart.plot(stackedParams);
+});
 })(jQuery);
