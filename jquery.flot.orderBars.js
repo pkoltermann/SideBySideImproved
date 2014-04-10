@@ -27,9 +27,6 @@
         var nbOfBarsToOrder;
         var seriesPos = [];
         var sameOrderSeries = [];
-        var borderWidth;
-        var borderWidthInXabsWidth;
-        var pixelInXWidthEquivalent = 1;  //X axis unit/pixel
         var isHorizontal = false;
 
         /*
@@ -38,39 +35,41 @@
         function reOrderBars(plot, serie, datapoints){
             var shiftedPoints = null;
             
-            if (plot.sameOrderSeries) {
-                sameOrderSeries = plot.sameOrderSeries;
+            if (plot.sideBySideSameOrderSeriess) {
+                sameOrderSeries = plot.sideBySideSameOrderSeries;
             } else {
-                plot.sameOrderSeries = sameOrderSeries;
+                plot.sideBySideSameOrderSeries = sameOrderSeries;
             }
             
             if(serieNeedToBeReordered(serie)){     
                 isHorizontal = isGraphHorizontal(serie);
-                pixelInXWidthEquivalent = calculPixel2XWidthConvert(plot);
                 retrieveBarSeries(plot);
-                calculBorderAndBarWidth(serie);
+                
+                var centerBarNr = getCenterBarNr(nbOfBarsToOrder);
+                var centerBarShift = calculCenterBarShift(centerBarNr);
                 
                 if(nbOfBarsToOrder >= 2){  
                     var position = findPosition(serie);
                     var decallage = 0;
-                    
-                    var centerBarShift = calculCenterBarShift();
 
                     if (isBarAtLeftOfCenter(position)){
-                        decallage = -1*(sumWidth(orderedBarSeries,position-1,Math.floor(nbOfBarsToOrder / 2)-1)) - centerBarShift;
-                    }else{
-                        decallage = sumWidth(orderedBarSeries,Math.ceil(nbOfBarsToOrder / 2),position-2) + centerBarShift + borderWidthInXabsWidth*2;
+                        var barEnd = (centerBarNr) ? centerBarNr : nbOfBarsToOrder/2;
+                        decallage = -1 * (sumWidth(orderedBarSeries, position, barEnd)) - centerBarShift;
+                    } else if (isBarAtRightOfCenter(position)) {
+                        var barStart = (centerBarNr) ? centerBarNr + 2 : nbOfBarsToOrder/2 + 1;
+                        var barEnd = position - 1;
+                        decallage = sumWidth(orderedBarSeries, barStart, barEnd) + centerBarShift;
+                    } else {
+                        decallage = - centerBarShift;
                     }
 
-                    shiftedPoints = shiftPoints(datapoints,serie,decallage);
-                    datapoints.points = shiftedPoints;
+                    shiftPoints(datapoints,serie,decallage);
                } else if (nbOfBarsToOrder === 1){
                    // To be consistent with the barshift at other uneven numbers of bars, where
                    // the center bar is centered around the point, we also need to shift a single bar
                    // left by half its width
-                   var centerBarShift = -1*calculCenterBarShift();
-                   shiftedPoints = shiftPoints(datapoints,serie,centerBarShift);
-                   datapoints.points = shiftedPoints;
+                   var centerBarShift = -1 * calculCenterBarShift();
+                   shiftPoints(datapoints,serie,centerBarShift);
                }
            }
            return shiftedPoints;
@@ -118,79 +117,42 @@
 
             return sortByOrder(retSeries);
         }
+        
+        function getCenterBarNr(nbOfBarsToOrder) {
+            if (nbOfBarsToOrder % 2 === 0) {
+                return false;
+            }
+            
+            return Math.floor(nbOfBarsToOrder/2);
+        }
 
-        function sortByOrder(series){
+        function sortByOrder(series) {
             var n = series.length;
-            do {
-                for (var i=0,j=1; i < n - 1; i+=1,j=i+1) {
-                    if (series[i].bars.order > series[j].bars.order) {
-                        var tmp = series[i];
-                        series[i] = series[j];
-                        series[j] = tmp;
-                    }
-                    else if (series[i].bars.order === series[j].bars.order) {
-                        
-                        //check if any of the series has set ssIndex
-                        var ssIndex;
-                        if (typeof series[i].ssIndex === 'number' && 
-                                typeof series[j].ssIndex !== 'number') {
-                            ssIndex = series[i].ssIndex;
-                            series[j].ssIndex = ssIndex;
-                            sameOrderSeries[ssIndex].push(series[j]);                                
-                            sameOrderSeries[ssIndex].sort(sortByWidth);
-                            removeElement(series, j);
-                          
-                        }
-                        
-                        else if (typeof series[j].ssIndex === 'number' && 
-                                typeof series[i].ssIndex !== 'number') {
-                            ssIndex = series[j].ssIndex;
-                            series[i].ssIndex = ssIndex;
-                            sameOrderSeries[ssIndex].push(series[i]);                                
-                            sameOrderSeries[ssIndex].sort(sortByWidth);
-                            removeElement(series, j);
-                        }
-                        else if (typeof series[i].ssIndex === 'number' && 
-                                typeof series[j].ssIndex === 'number') {
-                            var ssToMergeId = series[j].ssIndex;
-                            var ssToMerge = sameOrderSeries[ssToMergeId];
-                            ssIndex = series[i].ssIndex;
-                            for (var csid in ssToMerge) {
-                                var ssToMove = ssToMerge[csid];
-                                ssToMove.ssIndex = ssIndex;
-                                sameOrderSeries[ssIndex].push(ssToMove);
-                                sameOrderSeries[ssIndex].sort(sortByWidth);
-                            }
-                            removeElement(sameOrderSeries, ssToMergeId);
-                            removeElement(series, j);
-                        }
-                        
-                        else {
-                            ssIndex = sameOrderSeries.length;
-                            sameOrderSeries[ssIndex] = [];
-                            series[i].ssIndex = ssIndex;
-                            series[j].ssIndex = ssIndex;
-                            sameOrderSeries[ssIndex].push(series[i]);      
-                            sameOrderSeries[ssIndex].push(series[j]);  
-                            sameOrderSeries[ssIndex].sort(sortByWidth);
-                            removeElement(series, j);
-                        }
-                        i--;
-                        n--;
+            for (var i = 0; i < n; i += 1) {
+                var ssIndex = series[i].bars.order;
+                if (!sameOrderSeries[ssIndex]) {
+                    sameOrderSeries[ssIndex] = [];
+                }
+                series[i].ssIndex = ssIndex;
+                sameOrderSeries[ssIndex].push(series[i]);
+            }
+            var newSeries = [];
+            var newSOSeries = [];
+            
+            for(var sid in sameOrderSeries) {
+                var sos = sameOrderSeries[sid];
+                sos.sort(sortByWidth);
+                newSOSeries.push(sos);
+                newSeries.push(sos[0]);
+            }
+            
 
-                        
-                        //leave the wider serie and the other one move to 
-                    }
-                }
-                n = n-1;
-            }
-            while (n>1);
-            for (var i=0; i < series.length; i++) {
-                if (series[i].ssIndex) {
-                    seriesPos[series[i].ssIndex] = i;
+            for (var i = 0; i < newSeries.length; i++) {
+                if (newSeries[i].ssIndex) {
+                    seriesPos[newSeries[i].ssIndex] = i;
                 }
             }
-            return series;
+            return newSeries;
         }
         
         function sortByWidth(serie1,serie2){
@@ -201,12 +163,7 @@
         function removeElement(arr, index) {
             return arr.splice(index, 1);
         }
-        
-        function  calculBorderAndBarWidth(serie){
-            borderWidth = typeof serie.bars.lineWidth === "number" ? serie.bars.lineWidth  : 2;
-            borderWidthInXabsWidth = borderWidth * pixelInXWidthEquivalent;
-        }
-        
+                
         function isGraphHorizontal(serie){
             if(serie.bars.horizontal){
                 return true;
@@ -231,36 +188,42 @@
             return pos+1;
         }
 
-        function calculCenterBarShift(){
-            var width = 0;
-
-            if(nbOfBarsToOrder%2 !== 0)
+        function calculCenterBarShift(centerBarNr){
+            if (!centerBarNr) {
+                return 0;
+            }
                 // Since the array indexing starts at 0, we need to use Math.floor instead of
                 // Math.ceil otherwise we will get an error if there is only one bar
-                width = (orderedBarSeries[Math.floor(nbOfBarsToOrder / 2)].bars.barWidth)/2;
-
-            return width;
+            return  calculateSerieWidth(orderedBarSeries[centerBarNr])/2;
         }
 
         function isBarAtLeftOfCenter(position){
-            return position <= Math.ceil(nbOfBarsToOrder / 2);
+            return position <= Math.floor(nbOfBarsToOrder / 2);
+        }
+        
+        function isBarAtRightOfCenter(position){
+            return position > Math.ceil(nbOfBarsToOrder / 2);
         }
 
         function sumWidth(series,start,end){
             var totalWidth = 0;
 
             for(var i = start; i <= end; i++){
-                totalWidth += series[i].bars.barWidth+borderWidthInXabsWidth*2;
+                totalWidth += calculateSerieWidth(series[i]);
             }
 
             return totalWidth;
+        }
+        
+        function calculateSerieWidth(serie) {
+            return serie.bars.barWidth;
         }
 
         function shiftPoints(datapoints,serie,dx){
             var ps = datapoints.pointsize;
             var points = datapoints.points;
             var j = 0;           
-            for(var i = isHorizontal ? 1 : 0;i < points.length; i += ps){
+            for(var i = isHorizontal ? 1 : 0; i < points.length; i += ps){
                 points[i] += dx;
                 //Adding the new x value in the serie to be abble to display the right tooltip value,
                 //using the index 3 to not overide the third index.
